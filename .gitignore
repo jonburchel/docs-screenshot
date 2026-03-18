@@ -1,0 +1,17 @@
+# Test artifacts (generated during E2E testing)
+test-*.png
+test-*.json
+test-output/
+temp_*.js
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Playwright
+.playwright-cli/
+
+# OS
+Thumbs.db
+.DS_Store
