@@ -34,6 +34,42 @@ The skill will:
 - Generate a comparison report (old vs. new dimensions, changes detected)
 - Open all screenshots in GIMP for final review
 
+## Example Prompts
+
+These examples show progressively more complex ways to use the skill, from a single screenshot to batch operations across entire doc sets.
+
+### Single screenshot for a new article
+
+> *"I'm writing a doc about creating an Azure AI Search resource. Take a screenshot of the 'Create Search service' form in the Azure portal, filled out with a resource named contoso-search in the contoso-rg resource group, region East US, Basic tier. Add a red callout box around the pricing tier dropdown."*
+
+### Refresh a single article's screenshots
+
+> *"Refresh the screenshots in F:\git\azure-ai-docs-pr\articles\ai-services\document-intelligence\how-to-guides\create-document-intelligence-resource.md. Read the article, figure out what each screenshot should show, provision any resources needed, recapture each one with PII scrubbed, and save them to the correct media paths."*
+
+### Validate and compare: side-by-side HTML report
+
+> *"Pick 5 articles from F:\git\azure-ai-docs-pr\articles\ai-services that have Azure portal screenshots. For each one, recreate the screenshots based on the article content and alt text. Then generate an HTML comparison page showing every original image side-by-side with your recaptured version. Include callout boxes wherever the originals have them."*
+
+This produces a self-contained HTML report with base64-embedded images, a summary table, PII handling notes, and click-to-zoom on each image. [See an example comparison report.](test-comparison/comparison-report.html)
+
+### Batch refresh by folder
+
+> *"Refresh all screenshots in F:\git\azure-ai-docs-pr\articles\ai-services\content-safety\. Find every markdown file that contains :::image::: references pointing to Azure portal screenshots (not diagrams). For each article, recapture its screenshots and generate a comparison report. Create any Azure resources needed, then ask me before cleaning them up."*
+
+### Batch refresh by topic or pattern
+
+> *"Find all articles under F:\git\azure-ai-docs-pr\articles\ that show the 'Keys and Endpoint' page for any Azure AI service. Recapture each one with current portal UI, scrub all PII, match callout boxes from the originals, and generate a single HTML comparison report covering all of them."*
+
+### Surgical refresh with custom PII rules
+
+> *"Update the screenshots in the Key Vault tutorial at articles\ai-services\use-key-vault.md. The author used real resource names: replace 'my-key-vault' with 'contoso-kv', 'my-cogsvc-resource' with 'contoso-ai', and any email addresses with john@contoso.com. Create a Key Vault with two secrets named 'endpoint' and 'key', then capture the Secrets page and the Keys & Endpoint page. Add red callout boxes on the same elements the original screenshots highlight."*
+
+### Non-Azure portals
+
+> *"Take a screenshot of the Microsoft Entra admin center showing the 'App registrations' page with a registered app named 'Contoso Web App'. Create the app registration if it doesn't exist. Scrub all PII and add a callout box around the Application (client) ID field."*
+
+> *"Capture a screenshot of the SharePoint admin center showing the Active sites list. Scrub any real site names and replace with contoso-*, fabrikam-*, and northwind-*."*
+
 ## Supported Portals
 
 Works with any Microsoft portal using Microsoft SSO authentication:
