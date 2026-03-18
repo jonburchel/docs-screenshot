@@ -1,4 +1,4 @@
-# azure-screenshot
+# docs-screenshot
 
 A Copilot CLI skill that automates screenshot capture across Microsoft web portals (Azure, M365, SharePoint, Entra ID, Power Platform, and more) for Microsoft Learn documentation. Handles browser automation, resource provisioning, PII redaction with official Microsoft-approved fictitious values, callout boxes, cropping, and GIMP handoff.
 
@@ -75,18 +75,18 @@ Works with any Microsoft portal using Microsoft SSO authentication:
 
 ```powershell
 # Clone to wherever you keep tools
-git clone https://github.com/jonburchel/azure-screenshot.git
-cd azure-screenshot
+git clone https://github.com/jonburchel/docs-screenshot.git
+cd docs-screenshot
 
 # Create a junction so Copilot CLI discovers the skill
-cmd /c mklink /J "%USERPROFILE%\.copilot\skills\azure-screenshot" "%CD%"
+cmd /c mklink /J "%USERPROFILE%\.copilot\skills\docs-screenshot" "%CD%"
 ```
 
 ### Option B: Direct copy
 
 ```powershell
 # Copy the skill directory
-Copy-Item -Recurse .\azure-screenshot "$env:USERPROFILE\.copilot\skills\azure-screenshot"
+Copy-Item -Recurse .\docs-screenshot "$env:USERPROFILE\.copilot\skills\docs-screenshot"
 ```
 
 ### Verify installation
@@ -140,7 +140,7 @@ Per the [Azure screenshot guide](https://learn.microsoft.com/en-us/help/get-star
 ## Project structure
 
 ```
-azure-screenshot/
+docs-screenshot/
 ├── SKILL.md                    # Copilot CLI skill definition (the brain)
 ├── README.md                   # This file
 ├── lib/

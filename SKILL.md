@@ -1,5 +1,5 @@
 ---
-name: azure-screenshot
+name: docs-screenshot
 description: Capture, process, and redact screenshots for Microsoft Learn documentation. Use when the user needs screenshots of Azure, M365, SharePoint, Entra, or any Microsoft web portal. Also use when updating existing docs, validating screenshots, or creating screenshots for new documentation.
 allowed-tools: Bash(playwright-cli:*), Bash(python:*), Bash(az:*), Bash(pwsh:*), Bash(powershell:*)
 ---
