@@ -1,12 +1,62 @@
 ---
 name: azure-screenshot
-description: Capture, process, and redact Azure portal screenshots for Microsoft Learn documentation. Use when the user needs to take Azure screenshots, redact PII, add callout boxes, crop images, or prepare documentation screenshots.
-allowed-tools: Bash(playwright-cli:*), Bash(python:*), Bash(az:*)
+description: Capture, process, and redact screenshots for Microsoft Learn documentation. Use when the user needs screenshots of Azure, M365, SharePoint, Entra, or any Microsoft web portal. Also use when updating existing docs, validating screenshots, or creating screenshots for new documentation.
+allowed-tools: Bash(playwright-cli:*), Bash(python:*), Bash(az:*), Bash(pwsh:*), Bash(powershell:*)
 ---
 
-# Azure Documentation Screenshot Skill
+# Microsoft Documentation Screenshot Skill
 
-Automates the full pipeline for creating Azure portal screenshots that comply with Microsoft Learn contributor guidelines: browser automation, PII redaction with approved fictitious values, callout boxes, smart cropping, and GIMP handoff.
+Automates the full pipeline for creating documentation screenshots across all Microsoft web portals (Azure, M365, SharePoint, Entra ID, Power Platform, etc.) that comply with Microsoft Learn contributor guidelines: browser automation, resource provisioning, PII redaction with approved fictitious values, callout boxes, smart cropping, and GIMP handoff.
+
+## Two Primary Usage Scenarios
+
+### Scenario 1: New Documentation Authoring
+
+The user is writing a new article and needs screenshots. They describe what the screenshot should show, including:
+- Which portal/service (Azure, M365 Admin, SharePoint, etc.)
+- What the user should see (e.g., "the VM creation blade with size B2s selected")
+- What resources must exist (e.g., "a resource group named contoso-rg with a VM")
+- What elements to highlight with callout boxes
+- How to crop the image
+
+**Workflow:**
+1. Parse the user's description to determine required resources and portal page
+2. Provision any resources needed (using `az`, `m365`, Graph API, PowerShell, etc.)
+3. Open the correct portal and navigate to the target page
+4. Configure the view (expand panes, select items, scroll to correct position)
+5. Scrub all PII from the DOM across all frames
+6. Capture screenshot at 1200x800
+7. Post-process: callouts, crop, border, optimize
+8. Open in GIMP for final review
+9. Ask user whether to clean up provisioned resources
+
+### Scenario 2: Existing Documentation Maintenance
+
+The user has an existing markdown article with screenshots that need to be validated or refreshed. They provide the article file path or URL.
+
+**Workflow:**
+1. Read the markdown article and parse all image references
+2. For each image, read its alt text and surrounding context to understand what it should show
+3. Determine the portal URL, required resources, and page state for each screenshot
+4. For each screenshot:
+   a. Provision resources if needed
+   b. Navigate to the correct page
+   c. Scrub PII, capture, process
+   d. Compare with the original image (dimensions, rough visual similarity)
+   e. Save to the correct media/ path with the correct filename
+5. Generate a report: which screenshots were updated, which matched, which differed
+6. Open all new screenshots in GIMP for final review
+
+**Example prompt:** *"Update the screenshots in /docs/azure-sql/create-database.md. The article shows creating an Azure SQL database through the portal."*
+
+## Limitations
+
+- **Credential-scoped provisioning**: The skill can only create resources the user's credentials allow. If you lack permissions for a specific Azure service, M365 feature, or SharePoint site, the skill cannot provision those resources for you.
+- **MFA/Conditional Access**: Some portals may trigger MFA prompts that require manual interaction. The skill will pause and ask for help.
+- **Portal-specific quirks**: Each Microsoft portal has unique popup patterns, loading behaviors, and DOM structures. Azure portal is the most thoroughly tested. Other portals may need additional popup dismissal patterns added.
+- **Closed Shadow DOM**: Some portal components use closed Shadow DOM that cannot be accessed even via Playwright. In rare cases, post-screenshot pixel-level redaction is needed as a fallback.
+- **Dynamic content**: Portals with real-time data (metrics, logs, dashboards) may show different values between captures. The skill scrubs PII but cannot guarantee identical content across runs.
+- **Canvas/SVG content**: Charts, graphs, and other canvas/SVG-rendered content cannot be scrubbed via DOM manipulation. These require the pixel-level image editing fallback.
 
 ## Quick Start
 
@@ -33,14 +83,51 @@ python F:\home\azure-screenshot\lib\screenshot_processor.py \
 
 ## Full Workflow
 
-### Phase 1: Azure Authentication & Setup
+### Phase 0: Determine the Target Portal
+
+This skill works with ANY Microsoft web portal that uses Microsoft SSO. Choose the correct base URL:
+
+| Portal | Base URL | Customer View Flag |
+|--------|----------|-------------------|
+| **Azure** | `https://portal.azure.com/` | `?feature.customportal=false` |
+| **M365 Admin** | `https://admin.microsoft.com/` | none |
+| **SharePoint Admin** | `https://admin.microsoft.com/sharepoint` | none |
+| **SharePoint Site** | `https://<tenant>.sharepoint.com/` | none |
+| **Microsoft Entra** | `https://entra.microsoft.com/` | none |
+| **Power Platform** | `https://make.powerapps.com/` | none |
+| **Teams Admin** | `https://admin.teams.microsoft.com/` | none |
+| **Exchange Admin** | `https://admin.exchange.microsoft.com/` | none |
+| **Intune** | `https://intune.microsoft.com/` | none |
+| **Defender** | `https://security.microsoft.com/` | none |
+| **Purview** | `https://compliance.microsoft.com/` | none |
+| **Fabric** | `https://app.fabric.microsoft.com/` | none |
+| **DevOps** | `https://dev.azure.com/` | none |
+
+**Resource provisioning tools by portal:**
+
+| Portal | Provisioning Tool | Example |
+|--------|------------------|---------|
+| Azure | `az` CLI | `az group create --name contoso-rg --location eastus` |
+| M365 / Entra | Microsoft Graph PowerShell | `New-MgUser`, `New-MgGroup` |
+| SharePoint | PnP PowerShell | `New-PnPSite`, `Add-PnPListItem` |
+| Power Platform | Power Apps CLI (`pac`) | `pac solution create` |
+| Exchange | Exchange Online PowerShell | `New-Mailbox`, `New-DistributionGroup` |
+| DevOps | `az devops` CLI | `az devops project create` |
+
+### Phase 1: Authentication & Setup
 
 **Open browser with persistent Edge profile (picks up existing Microsoft SSO):**
 ```bash
+# For Azure (with customer view flag):
 playwright-cli open --browser=msedge --persistent "https://portal.azure.com/?feature.customportal=false"
+
+# For any other portal (no special flags needed):
+playwright-cli open --browser=msedge --persistent "https://entra.microsoft.com/"
 ```
 
-The `?feature.customportal=false` flag hides internal/preview features that customers cannot see.
+The persistent profile shares cookies with the user's regular Edge sessions, so Microsoft SSO typically works automatically.
+
+**For Azure specifically:** always append `?feature.customportal=false` to hide internal/preview features.
 
 **Check if authenticated:**
 ```bash
@@ -358,6 +445,54 @@ After processing, the skill outputs a summary:
 - Each PII item: original value, type, severity, replacement value, pixel location
 - Number of callout boxes drawn
 - Whether cropping was applied
+
+---
+
+## Scenario: Parsing an Existing Article for Screenshot Refresh
+
+When given an existing markdown article, follow this process:
+
+### Step 1: Read the article and extract image references
+
+```bash
+# Read the article
+cat /path/to/article.md
+```
+
+Look for image references in either format:
+- `:::image type="content" source="media/article-name/image-name.png" alt-text="Description.":::`
+- `![Description](media/article-name/image-name.png)`
+
+### Step 2: For each image, determine what it shows
+
+Read the **alt text**, the **surrounding markdown** (especially numbered steps), and the **existing image** (if available) to understand:
+- Which portal and page is shown
+- What state the page should be in (resources created, settings configured, etc.)
+- What elements have callout boxes
+- How the image is cropped (full browser frame vs. focused view)
+
+### Step 3: Plan resource provisioning
+
+Examine all images together to build a single resource provisioning plan:
+- What resources are needed across all screenshots
+- Create them in dependency order
+- Use fictitious names from the start (contoso-rg, etc.) so scrubbing is minimal
+
+### Step 4: Capture each screenshot in order
+
+Follow the full workflow (Phases 1-9) for each screenshot, saving to the correct `media/` path with the correct filename.
+
+### Step 5: Generate comparison report
+
+For each image, report:
+- Original file: dimensions, size, exists?
+- New file: dimensions, size
+- What changed (new resources, updated UI, different crop)
+- Any PII that was found and replaced
+
+### Step 6: Offer cleanup
+
+Ask the user whether to delete provisioned resources.
 
 ---
 

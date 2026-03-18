@@ -1,6 +1,65 @@
 # azure-screenshot
 
-A Copilot CLI skill that automates Azure portal screenshot capture for Microsoft Learn documentation. Handles browser automation, PII redaction with official Microsoft-approved fictitious values, callout boxes, cropping, and GIMP handoff.
+A Copilot CLI skill that automates screenshot capture across Microsoft web portals (Azure, M365, SharePoint, Entra ID, Power Platform, and more) for Microsoft Learn documentation. Handles browser automation, resource provisioning, PII redaction with official Microsoft-approved fictitious values, callout boxes, cropping, and GIMP handoff.
+
+## Two Usage Scenarios
+
+### 1. New Documentation Authoring
+
+You're writing a new article and need screenshots. Describe what you need:
+
+> *"I need a screenshot of the Azure portal showing a VM creation blade. The VM should be named contoso-vm in resource group contoso-rg, size Standard_B2s, running Ubuntu 22.04. Highlight the 'Size' dropdown with a red callout box."*
+
+The skill will:
+- Create the resource group and VM (via `az` CLI)
+- Open Azure portal in Edge, navigate to the VM creation blade
+- Configure the view to match your description
+- Scrub any remaining PII from the DOM (including cross-origin iframes)
+- Capture at 1200x800, add callout box, crop, optimize
+- Open in GIMP for your final review
+- Ask whether to clean up the provisioned resources
+
+### 2. Existing Documentation Maintenance
+
+You have an article with screenshots that need refreshing:
+
+> *"Update the screenshots in /docs/azure-sql/create-database.md. The UI has changed since these were last captured."*
+
+The skill will:
+- Parse the markdown to find all `:::image:::` and `![]()` references
+- Read alt text and surrounding steps to understand what each screenshot shows
+- Provision any required resources
+- Recapture each screenshot at the correct portal page
+- Save to the correct `media/` path with the original filename
+- Generate a comparison report (old vs. new dimensions, changes detected)
+- Open all screenshots in GIMP for final review
+
+## Supported Portals
+
+Works with any Microsoft portal using Microsoft SSO authentication:
+
+| Portal | URL | Provisioning Tool |
+|--------|-----|------------------|
+| Azure | portal.azure.com | `az` CLI |
+| M365 Admin | admin.microsoft.com | Microsoft Graph PowerShell |
+| SharePoint | *.sharepoint.com | PnP PowerShell |
+| Microsoft Entra | entra.microsoft.com | `az` CLI / Graph PowerShell |
+| Power Platform | make.powerapps.com | `pac` CLI |
+| Teams Admin | admin.teams.microsoft.com | Teams PowerShell |
+| Exchange | admin.exchange.microsoft.com | Exchange PowerShell |
+| Intune | intune.microsoft.com | Graph PowerShell |
+| Defender | security.microsoft.com | Graph PowerShell |
+| Fabric | app.fabric.microsoft.com | Fabric REST API |
+| DevOps | dev.azure.com | `az devops` CLI |
+
+## Limitations
+
+- **Credential-scoped provisioning**: The skill can only create resources the user is authorized to create. If you lack permissions for a service, subscription, or tenant, the skill cannot provision those resources on your behalf.
+- **MFA/Conditional Access**: Some portals may trigger MFA prompts requiring manual interaction. The skill pauses and asks for help when this happens.
+- **Portal-specific quirks**: Azure portal is the most thoroughly tested. Other portals may have unique popup patterns or DOM structures that need additional handling. File an issue if you encounter one.
+- **Canvas/SVG content**: Charts, graphs, and other canvas-rendered content cannot be scrubbed via DOM manipulation; these fall back to pixel-level image editing.
+- **Closed Shadow DOM**: Rare portal components with closed Shadow DOM cannot be accessed; post-screenshot pixel-level redaction is used as fallback.
+- **Dynamic content**: Real-time dashboards may show different data between captures.
 
 ## Prerequisites
 
@@ -52,7 +111,7 @@ You can also just ask: *"Take an Azure screenshot of the resource groups page"* 
 
 ## Key innovation: cross-origin iframe scrubbing
 
-Azure portal renders grid/table content inside cross-origin iframes (`sandbox-*.reactblade.portal.azure.net`). Standard JavaScript cannot access these frames. This skill uses Playwright's `page.frames()` API to iterate *all* frames and scrub each one. Verified to produce 56+ replacements on a real portal page.
+Azure portal (and other Microsoft portals) renders content inside cross-origin iframes. Standard JavaScript cannot access these frames. This skill uses Playwright's `page.frames()` API to iterate *all* frames and scrub each one. Verified to produce 56+ replacements on a real Azure portal page with resource groups, subscription names, email addresses, and GUIDs all replaced in a single pass.
 
 ## PII replacement values
 
@@ -94,6 +153,15 @@ azure-screenshot/
 └── references/
     └── screenshot-guidelines.md # Consolidated MS contributor guide reference
 ```
+
+## How it works (under the hood)
+
+1. **Browser automation** via `playwright-cli` with Edge persistent profile (inherits Microsoft SSO)
+2. **Resource provisioning** via `az` CLI, Graph PowerShell, PnP PowerShell, or whatever tool matches the target portal
+3. **DOM scrubbing** iterates all frames (including cross-origin) replacing PII with approved fictitious values directly in the browser, so the screenshot renders with correct fonts natively
+4. **Pixel-level fallback** via Pillow for cases where DOM scrubbing can't reach (canvas, SVG, closed shadow DOM): detects PII coordinates from DOM extraction, paints over with background color, re-renders replacement text in Segoe UI at matching size
+5. **Post-processing**: callout boxes (RGB 233,28,28 / 3px), smart crop, gray border, PNG optimization to <200KB
+6. **GIMP handoff**: opens processed images in running GIMP instance for final human review
 
 ## Supported PII patterns
 
