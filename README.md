@@ -100,10 +100,13 @@ Works with any Microsoft portal using Microsoft SSO authentication:
 ## Prerequisites
 
 - **Windows** with [Microsoft Edge](https://www.microsoft.com/edge)
-- **Copilot CLI** with the [playwright-cli skill](https://github.com/anthropics/claude-code/tree/main/skills/playwright-cli) installed (`playwright-cli install --skills`)
+- **Browser automation** (one of the following):
+  - **Copilot CLI users**: Install the [playwright-cli skill](https://github.com/anthropics/claude-code/tree/main/skills/playwright-cli) (`playwright-cli install --skills`)
+  - **VS Code users**: Install the [Playwright MCP server](https://github.com/microsoft/playwright-mcp) (`npx @playwright/mcp@latest`)
 - **Python 3.10+** with Pillow: `pip install Pillow`
 - **Azure CLI**: `winget install Microsoft.AzureCLI` (for resource provisioning)
 - **GIMP 2.10+** (optional, for final review): `winget install GIMP.GIMP`
+- **Your own Microsoft credentials**: The skill uses your logged-in identity. It will never hardcode or share credentials. If MFA is triggered, you will be asked to complete it manually.
 
 ## Install
 

@@ -60,22 +60,24 @@ The user has an existing markdown article with screenshots that need to be valid
 
 ## Quick Start
 
+> **Note:** This skill uses `playwright-cli` commands (from the Copilot CLI playwright-cli skill). If you're using VS Code with the [Playwright MCP server](https://github.com/microsoft/playwright-mcp), the equivalent MCP tools work similarly. See [Phase 1](#phase-1-authentication--setup) for details.
+
 ```bash
-# 1. Open Azure portal in Edge with persistent profile
+# 1. Open Azure portal in Edge with persistent profile (inherits your SSO)
 playwright-cli open --browser=msedge --persistent "https://portal.azure.com/?feature.customportal=false"
 
 # 2. Navigate to the target page
 playwright-cli goto "https://portal.azure.com/#view/HubsExtension/BrowseResource/resourceType/Microsoft.Compute%2FVirtualMachines"
 
 # 3. Wait for page to load, dismiss any popups
-playwright-cli run-code "async page => { await page.waitForLoadState('networkidle'); }"
+playwright-cli run-code "async page => { await page.waitForTimeout(3000); }"
 
 # 4. Take screenshot + extract DOM info simultaneously
 playwright-cli screenshot --filename=raw-screenshot.png
 # Then run the DOM extraction (see "Extract DOM Info" section below)
 
 # 5. Process the image (PII redaction, callouts, crop, optimize)
-python F:\home\azure-screenshot\lib\screenshot_processor.py \
+python <skill-install-path>/lib/screenshot_processor.py \
   --dom-json dom_data.json --image raw-screenshot.png \
   --output processed-screenshot.png \
   --description "Virtual machines list in Azure portal"
@@ -116,6 +118,12 @@ This skill works with ANY Microsoft web portal that uses Microsoft SSO. Choose t
 
 ### Phase 1: Authentication & Setup
 
+**Browser automation tool:** This skill uses browser automation via one of these approaches (adapt commands to your environment):
+- **Copilot CLI**: Uses the `playwright-cli` skill (install with `playwright-cli install --skills`)
+- **VS Code / other editors**: Uses the [Playwright MCP server](https://github.com/microsoft/playwright-mcp) (`npx @playwright/mcp@latest`)
+
+The commands in this skill use `playwright-cli` syntax. If you are using the Playwright MCP server instead, the equivalent MCP tool calls are similar (e.g., `browser_navigate` instead of `playwright-cli goto`). Adapt as needed for your environment.
+
 **Open browser with persistent Edge profile (picks up existing Microsoft SSO):**
 ```bash
 # For Azure (with customer view flag):
@@ -135,22 +143,32 @@ playwright-cli snapshot
 # Look for user avatar/name in the snapshot. If you see a sign-in button, auth is needed.
 ```
 
-**If login is needed, prefer microsoft.com credentials:**
+**If login is needed, use the current user's credentials (DO NOT hardcode any specific email):**
 ```bash
 playwright-cli snapshot
 # Find the email input field ref
-playwright-cli fill <ref> "jburchel@microsoft.com"
+# Ask the user for their email, or detect it from:
+#   az account show --query "user.name" -o tsv
+#   $env:USERNAME + "@microsoft.com"  (as a guess, confirm with user)
+playwright-cli fill <ref> "<user's email>"
 playwright-cli click <submit-ref>
-# Wait for redirect
+# MFA may be triggered - if so, pause and ask the user to complete it manually
+# then wait for the redirect
 playwright-cli run-code "async page => { await page.waitForLoadState('networkidle'); }"
 ```
 
-**Select BAMI subscription if multiple subscriptions exist:**
+**IMPORTANT: Never hardcode a specific user's credentials.** Always determine the current user's identity dynamically or ask them.
+
+**Select the user's preferred subscription (if multiple exist):**
 ```bash
-# Navigate to subscription picker or use az CLI
-playwright-cli goto "https://portal.azure.com/#view/Microsoft_Azure_Billing/SubscriptionsBladeV2"
-playwright-cli snapshot
-# Look for "BAMI" in the subscription list and select it
+# Check what subscription is currently active
+az account show --query "{name:name, id:id}" -o table
+
+# If the user has a preferred subscription, switch to it:
+# az account set --subscription "<subscription name or ID>"
+
+# To list all available subscriptions:
+# az account list --query "[].{name:name, id:id, isDefault:isDefault}" -o table
 ```
 
 ### Phase 2: Dismiss Popups & Banners
