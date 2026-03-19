@@ -2,6 +2,8 @@
 
 A Copilot CLI skill that automates screenshot capture across Microsoft web portals (Azure, M365, SharePoint, Entra ID, Power Platform, and more) for Microsoft Learn documentation. Handles browser automation, resource provisioning, PII redaction with official Microsoft-approved fictitious values, callout boxes, cropping, and GIMP handoff.
 
+This skill was created in [this Copilot chat session](https://gist.github.com/jonburchel/2a1f0f25b064f7276a45a2aa2e544970).
+
 ## Two Usage Scenarios
 
 ### 1. New Documentation Authoring
