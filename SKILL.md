@@ -60,7 +60,7 @@ The user has an existing markdown article with screenshots that need to be valid
 
 ## Quick Start
 
-> **Note:** This skill uses `playwright-cli` commands (from the Copilot CLI playwright-cli skill). If you're using VS Code with the [Playwright MCP server](https://github.com/microsoft/playwright-mcp), the equivalent MCP tools work similarly. See [Phase 1](#phase-1-authentication--setup) for details.
+> **Note:** This skill uses `playwright-cli` commands (from the Copilot CLI playwright-cli skill), which run headless by default. If you're using VS Code with the [Playwright MCP server](https://github.com/microsoft/playwright-mcp), configure it with `--headless --browser=msedge` to avoid browser popups. See [Phase 1](#phase-1-authentication--setup) for details.
 
 ```bash
 # 1. Open Azure portal in Edge with persistent profile (inherits your SSO)
@@ -120,7 +120,7 @@ This skill works with ANY Microsoft web portal that uses Microsoft SSO. Choose t
 
 **Browser automation tool:** This skill uses browser automation via one of these approaches (adapt commands to your environment):
 - **Copilot CLI**: Uses the `playwright-cli` skill (install with `playwright-cli install --skills`)
-- **VS Code / other editors**: Uses the [Playwright MCP server](https://github.com/microsoft/playwright-mcp) (`npx @playwright/mcp@latest`)
+- **VS Code / other editors**: Uses the [Playwright MCP server](https://github.com/microsoft/playwright-mcp) (`npx @playwright/mcp@latest --headless --browser=msedge`)
 
 The commands in this skill use `playwright-cli` syntax. If you are using the Playwright MCP server instead, the equivalent MCP tool calls are similar (e.g., `browser_navigate` instead of `playwright-cli goto`). Adapt as needed for your environment.
 

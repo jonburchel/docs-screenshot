@@ -102,7 +102,7 @@ Works with any Microsoft portal using Microsoft SSO authentication:
 - **Windows** with [Microsoft Edge](https://www.microsoft.com/edge)
 - **Browser automation** (one of the following):
   - **Copilot CLI users**: Install the [playwright-cli skill](https://github.com/anthropics/claude-code/tree/main/skills/playwright-cli) (`playwright-cli install --skills`)
-  - **VS Code users**: Install the [Playwright MCP server](https://github.com/microsoft/playwright-mcp) (`npx @playwright/mcp@latest`)
+  - **VS Code users**: Install the [Playwright MCP server](https://github.com/microsoft/playwright-mcp) (`npx @playwright/mcp@latest --headless --browser=msedge`)
 - **Python 3.10+** with Pillow: `pip install Pillow`
 - **Azure CLI**: `winget install Microsoft.AzureCLI` (for resource provisioning)
 - **GIMP 2.10+** (optional, for final review): `winget install GIMP.GIMP`
