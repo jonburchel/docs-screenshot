@@ -418,29 +418,87 @@ playwright-cli run-code "async page => {
 
 ### Phase 8: Callout Boxes
 
-For callout boxes, you need the pixel coordinates of the UI element to highlight. Get these from the DOM extraction:
+**CRITICAL: Never hardcode callout coordinates.** Always find elements via DOM inspection across all frames.
+
+**Common mistakes to avoid:**
+- DO NOT guess coordinates based on "typical layout" or approximate y positions
+- DO NOT use text bounding boxes alone; buttons have icons (+, arrows) that must be included
+- DO NOT assume menu items are at specific positions; portal layouts vary by subscription, screen size, and which sections are expanded
+- ALWAYS inspect the actual DOM element and walk up to its interactive container (button, link, list item) to get the full visual bounds including icons
+
+**Finding callout targets robustly:**
+
+The correct approach is to search ALL frames for the target element, find its interactive container (the button/link/menu-item ancestor that includes icons), and use that container's bounding box:
 
 ```bash
-# Find the element you want to highlight
-playwright-cli snapshot
-# Note the ref of the element (e.g., e15)
-
-# Get its bounding box
 playwright-cli run-code "async page => {
-  const el = page.locator('[data-ref=\"e15\"]');
-  const box = await el.boundingBox();
-  return box;  // {x, y, width, height}
+  const targets = [
+    { text: 'Generate/Import', area: 'toolbar', role: 'button' },
+    { text: 'Secrets', area: 'nav', role: 'menuitem' },
+  ];
+  const results = {};
+  const frames = page.frames();
+  for (const target of targets) {
+    for (const frame of frames) {
+      try {
+        const match = await frame.evaluate((t) => {
+          // Find elements containing the target text
+          const candidates = [];
+          for (const el of document.querySelectorAll('*')) {
+            if (!el.textContent.includes(t.text)) continue;
+            const r = el.getBoundingClientRect();
+            if (r.width === 0 || r.height === 0 || r.top < 0 || r.top > window.innerHeight) continue;
+            // Score: prefer direct text match, correct area, correct role
+            let score = 0;
+            const directText = Array.from(el.childNodes).filter(n => n.nodeType === 3).map(n => n.textContent.trim()).join(' ');
+            if (directText === t.text) score += 30;
+            else if (directText.includes(t.text)) score += 10;
+            if (t.area === 'nav' && r.x < 300) score += 10;
+            if (t.area === 'toolbar' && r.y < 200 && r.x > 250) score += 10;
+            const role = el.getAttribute('role') || '';
+            const tag = el.tagName.toLowerCase();
+            if (t.role === 'button' && (tag === 'button' || role === 'button' || tag === 'a')) score += 15;
+            if (t.role === 'menuitem' && (role === 'menuitem' || role === 'treeitem' || tag === 'li')) score += 15;
+            candidates.push({ el, score });
+          }
+          if (!candidates.length) return null;
+          candidates.sort((a, b) => b.score - a.score);
+          // Walk up from best match to find the interactive container (includes icons)
+          let el = candidates[0].el;
+          for (let i = 0; i < 5 && el.parentElement; i++) {
+            el = el.parentElement;
+            const tag = el.tagName.toLowerCase();
+            const role = el.getAttribute('role') || '';
+            const cls = (el.className || '').toString().toLowerCase();
+            if (tag === 'a' || tag === 'button' || tag === 'li' ||
+                role === 'menuitem' || role === 'treeitem' || role === 'button' ||
+                cls.includes('menu-item') || cls.includes('listview-item') ||
+                cls.includes('command') || cls.includes('btn')) {
+              const r = el.getBoundingClientRect();
+              if (r.width > 0 && r.width < 400 && r.height < 80) break;
+            }
+          }
+          const r = el.getBoundingClientRect();
+          return { x: Math.round(r.x), y: Math.round(r.y), width: Math.round(r.width), height: Math.round(r.height) };
+        }, target);
+        if (match) { results[target.text] = match; break; }
+      } catch(e) {}
+    }
+  }
+  return results;
 }"
 ```
 
-Then pass those coordinates to the processor's `--callouts` argument, or draw them with the image_editor directly.
+**Then use those coordinates for callouts** (with 4px padding added by the image_editor automatically).
 
 **Callout specifications (per Microsoft contributor guide):**
 - Color: RGB **233, 28, 28** (hex #E91C1C)
 - Border thickness: **3px**
-- Rectangle should "hug" the element with 4px padding
+- Rectangle should "hug" the element with ~4px padding
 - Maximum 3-4 callouts per screenshot
 - Use numbered callouts for sequential steps if needed
+
+**When recreating callouts from original screenshots:** Study the original image carefully to identify WHICH elements have red boxes, then use the DOM finder above to locate those same elements in the recaptured page.
 
 ### Phase 9: Final Review in GIMP
 
