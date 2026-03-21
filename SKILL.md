@@ -425,6 +425,8 @@ playwright-cli run-code "async page => {
 - DO NOT use text bounding boxes alone; buttons have icons (+, arrows) that must be included
 - DO NOT assume menu items are at specific positions; portal layouts vary by subscription, screen size, and which sections are expanded
 - ALWAYS inspect the actual DOM element and walk up to its interactive container (button, link, list item) to get the full visual bounds including icons
+- DO NOT draw callout borders that clip through adjacent UI elements (e.g., a "copy to clipboard" button next to a text field). When highlighting a form field, expand the bounding box to include ALL sibling controls within the same form row (copy buttons, show/hide toggles, etc.)
+- When the callout target is a labeled field (like "KEY 1" or "Endpoint"), find the outermost form container that includes the label, the value, AND any action buttons (copy, regenerate, show/hide). Use that full container's bounding box.
 
 **Finding callout targets robustly:**
 
